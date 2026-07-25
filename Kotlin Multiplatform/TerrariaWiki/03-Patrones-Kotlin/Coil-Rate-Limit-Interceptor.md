@@ -145,3 +145,108 @@ D CoilHttp: 429 https://terraria.wiki.gg/images/Something.png
 W CoilHttp: 429 rate-limited, retrying in 1000ms (attempt 1/3) https://terraria.wiki.gg/images/Something
 D CoilHttp: retry -> 200 https://terraria.wiki.gg/images/Something.png
 ```
+
+---
+
+## Iteración 9: token bucket preventivo (2026-07-26)
+
+### Contexto adicional
+
+El fix de iteración 8 funcionó pero reveló un síntoma nuevo: **"las 10 primeras imágenes cargan muy bien, el resto no, y si vuelvo a hacer scroll a veces cargan"**. El re-scroll "a veces funciona" descartó definitivamente que fuera un problema de encoding o URL malformada. Era un **bug de diseño del propio RateLimitInterceptor**.
+
+### Causa raíz
+
+`Thread.sleep(1000-4000ms)` dentro del interceptor OkHttp **secuestra threads del dispatcher**. Con `maxRequestsPerHost=5`:
+
+1. Las 5 primeras requests ejecutan, reciben 429, entran en `Thread.sleep(1-4s)`. **Los 5 threads quedan bloqueados**.
+2. Las requests encoladas (5-15 más) no pueden ejecutarse: el dispatcher de OkHttp no tiene threads libres para el host.
+3. El usuario hace scroll → Coil cancela las requests fuera de viewport → algunas requests encoladas se eliminan de la cola OkHttp.
+4. El usuario hace scroll atrás → Coil relanza requests → los threads dormidos ya despertaron (pasaron 1-4s) → algunas requests nuevas pasan. **Pero solo si el timing coincide**.
+
+Por eso "10 primeras cargan, las demás no, y a veces al re-scroll sí".
+
+### Decisión
+
+Sustituir `RateLimitInterceptor` por un `TokenBucketInterceptor` preventivo que **limita throughput a 10 req/s antes de `proceed()`**, no reactivo tras un 429. Eliminar completamente el retry con backoff, ya que era la fuente del bug.
+
+### Implementación Kotlin (final)
+
+```kotlin
+class TokenBucketInterceptor(
+    private val periodMs: Long = CoilConfig.TOKEN_PERIOD_MS  // 100L = 10 req/s
+) : Interceptor {
+    private val nextSlot = AtomicLong(0L)
+
+    override fun intercept(chain: Interceptor.Chain): Response {
+        val request = chain.request()
+        val now = System.currentTimeMillis()
+        var reserved = 0L
+        while (true) {
+            val current = nextSlot.get()
+            val candidate = maxOf(current, now) + periodMs
+            if (nextSlot.compareAndSet(current, candidate)) {
+                reserved = candidate
+                break
+            }
+        }
+        val waitMs = (reserved - now).coerceAtLeast(0L)
+        if (waitMs > 0) Thread.sleep(waitMs)
+        val response = chain.proceed(request)
+        Log.d(CoilConfig.LOG_TAG, "${response.code} ${request.url.toString().take(120)}")
+        return response
+    }
+}
+```
+
+Config:
+```kotlin
+MAX_CONCURRENT_PER_HOST = 10  // sub 5→10: más threads pasan por la puerta del token
+TOKEN_PERIOD_MS = 100L         // 10 req/s sostenido
+```
+
+### Por qué funciona
+
+- **Regulación atómica con `compareAndSet`**: el primer thread pone `nextSlot = now+100`. El segundo pone `nextSlot = 200`. Etc. Cada thread reserva su slot único. No hay race condition ni doble reserva.
+- **Sleep hasta `reserved`, no hasta `now+periodMs`**: si 10 threads llegan simultáneamente, el 10º reserva `now+1000` y duerme los 1000ms completos. Los 5 primeros duermen <100ms. Total 1s para 10 imágenes, throughput regulado.
+- **No hay `Thread.sleep` reactivo**: si llega 429, simplemente se devuelve el 429 (Coil muestra error en esa card puntual). No se reintenta. Se confía en que el throttle de 10 req/s es suficiente para evitar 429.
+- **Mayor concurrencia (10 vs 5)**: más threads pasan por el token gate, pero el gate limita el throughput. CF recibe como mucho 10 req/s.
+
+### Tests del TokenBucketInterceptor (4)
+
+`TokenBucketInterceptorTest.kt` reemplaza al anterior `RateLimitInterceptorTest.kt`. Los tests miden el comportamiento real con `MockWebServer`:
+
+1. `single request does not sleep meaningfully` — una request tarda <200ms.
+2. `two consecutive requests arrive spaced at least 80ms apart` — 2 requests en paralelo, la 2ª llega al server al menos 80ms después de la 1ª (margen CI).
+3. `five parallel requests take at least 400ms total` — 5 requests en paralelo tardan ≥400ms en total (5 × 100ms = 500ms esperado, margen ≥400ms).
+4. `passes 200 response through unchanged` — body y response code se preservan.
+
+### Alternativas descartadas en esta iteración
+
+- **"Retry cooperativo con coroutine"**: convertir el interceptor a `suspendCancellableCoroutine` + `delay()` para que la cancelación de Coil propague. Considerada pero descartada porque añade complejidad y no resuelve el problema de raíz (los 429 reactivos son síntoma, no causa).
+- **"Quitar el interceptor, subir concurrencia"**: dejar que CF responda 429 y mostrar error. Inestable; dependería de cache edge de CF.
+- **"Solo subir maxRequestsPerHost a 10 sin token bucket"**: los 429 seguirían, el sleep seguiría, mismos problemas. La concurrencia sin regulación de throughput es exactamente el escenario que causa rate-limit.
+- **"Reintento residual de 1 intento en 429"**: descartado por el usuario tras revisar el plan. Si llegase 429 aislado (improbable con throttle de 10 req/s), se muestra placeholder. Re-scroll natural reintentaría.
+
+### Verificación en el móvil tras la iteración 9
+
+```bash
+~/Library/Android/sdk/platform-tools/adb logcat -s CoilHttp:D
+```
+
+Salida esperada:
+```
+D CoilHttp: 200 https://terraria.wiki.gg/images/Terra_Blade.png
+D CoilHttp: 200 https://terraria.wiki.gg/images/Copper_Broadsword.png
+... (10 req/s constante, sin 429)
+```
+
+Comportamiento esperado en la app:
+- Scroll continuo por una categoría: las imágenes cargan progresivamente a ~10/s.
+- No más "10 primeras cargan, el resto no".
+- No más "re-scroll a veces funciona". Ahora carga desde el primer intento.
+
+### Riesgos & mitigación
+
+- **Riesgo: latencia inicial alta en listas grandes.** Una lista de 50 items tarda ~5s en cargar la última imagen (50 × 100ms). Aceptable: mejor 5s garantizados que "nunca carga".
+- **Riesgo: si CF cambia su rate-limit a <10 req/s.** Mitigación: subir `TOKEN_PERIOD_MS` a 150-200ms es un cambio de una constante. Documentar en `CoilConfig`.
+- **Riesgo: si migramos a KMP, este interceptor OkHttp no es portable.** Deuda técnica documentada; el patrón (atomic CAS sobre Long + sleep hasta slot reservado) es trivialmente portable a Ktor HttpRequestPipeline phase o a un `HttpSend` plugin de Ktor.
