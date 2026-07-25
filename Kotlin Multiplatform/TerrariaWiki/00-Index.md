@@ -10,7 +10,7 @@
 - **Lint:** `./gradlew :app:lintDebug` → SUCCESSFUL.
 - **Tests:** `./gradlew :app:testDebugUnitTest` → **15/15 passed** (9 ItemsMapperTest + 6 ItemsViewModelTest).
 - **Repo público:** https://github.com/antonioalarconvirseda/terrariawiki (1 commit inicial en `main`, MIT license).
-- **Documentación:** 27 notas en esta bóveda Obsidian (fundación + patrones + API).
+- **Documentación:** 29 notas en esta bóveda Obsidian (fundación + patrones + API).
 - **Hand-off:** listo para que GLM-5.2 planifique la siguiente iteración.
 
 ## Cómo usar la app
@@ -30,7 +30,7 @@
 - [[06-Setup-Entorno]] — Android Studio, JDK, SDK, adb, conexión del móvil
 - [[07-GitHub-y-Publicacion]] — repo público, gh CLI, LICENSE, README
 
-### Patrones Kotlin (18 notas, todos implementados en código)
+### Patrones Kotlin (20 notas, todos implementados en código)
 - [[03-Patrones-Kotlin/Feature-based-structure]]
 - [[03-Patrones-Kotlin/Clean-Architecture]]
 - [[03-Patrones-Kotlin/Material-Theme-Tokens]]
@@ -49,6 +49,8 @@
 - [[03-Patrones-Kotlin/Testing-Coroutines-Turbine]]
 - [[03-Patrones-Kotlin/Navigation-Compose]]
 - [[03-Patrones-Kotlin/UX-Detail-Screen-Decisions]]
+- [[03-Patrones-Kotlin/Cargo-HOLDS-filter]]
+- [[03-Patrones-Kotlin/Home-Navigation-Pattern]]
 
 ### API de Terraria (MediaWiki + Cargo)
 - [[04-API-Terraria/Endpoint-Lista]]

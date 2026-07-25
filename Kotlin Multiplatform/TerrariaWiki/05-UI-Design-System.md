@@ -122,3 +122,17 @@ private val TerrariaDarkColors = darkColorScheme(
 
 - Iconos de Material Symbols (filled): `search`, `arrow_back`, `favorite`, `shopping_cart` (sell), `construction` (damage), `shield` (defense).
 - Sin assets personalizados en MVP (los iconos de items vienen del wiki vía Coil).
+
+## Icono de la app
+
+Tras la validación en móvil (iteración 4) el usuario pidió reemplazar el placeholder por el **Tree of Life** (Living Wood Tree), el árbol icónico de la portada oficial de Terraria 1.4.
+
+**Composición del icono (vector drawable, viewport 108×108):**
+
+- **Fondo:** degradado lineal vertical `SkyTeal (#4A93B0)` → `JungleGreen (#3B7C36)` (paleta del proyecto).
+- **Tronco:** marrón `#8B5A2B` vertical desde el centro, con sombra más oscura `#6B3F23`.
+- **Copa:** tres capas de verde: fondo `#2A5630`, medio `#3B7C36`, brillo `#4A9A3F` para profundidad.
+- **Hojas azules** dispersas `#4A93B0` (color de la paleta) para evocar el bosque mágico de Terraria 1.4.
+- **Castillo al fondo:** silueta de 5 torres en `#C0B8A0` con un toque de oro `#F2C94C` en la torre central, aludiendo a la portada oficial del juego.
+
+**Rationale:** el Tree of Life es el símbolo más reconocible de Terraria 1.4 (aparece en el logo oficial, en la pantalla de inicio, en merchandising). Más icónico que un slime, una espada o un corazón. Refleja la estética de la wiki en una sola imagen.
