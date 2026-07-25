@@ -69,3 +69,4 @@ fun ItemThumbnail(item: Item, size: Dp = 56.dp) {
   -keep class coil.** { *; }
   ```
   (A añadir en `proguard-rules.pro` cuando se active minify en release.)
+- **Riesgo:** rate-limit 429 de CloudFlare al pedir muchas imágenes simultáneas a `Special:Redirect/file/...` (iteración 5). **Mitigación (iteración 6):** saltamos `Special:Redirect` y construimos directamente la URL final `https://terraria.wiki.gg/images/<filename>`. Esa URL está cacheada en CF con `cache-control: public, max-age=31536000, immutable` y responde `cf-cache-status: HIT` → no hay rate-limit. Función `buildItemImageUrl(filename)` en `core/network/HttpClientFactory.kt` centraliza el encoding (`%20` para espacios, `%27` para apostrofes).

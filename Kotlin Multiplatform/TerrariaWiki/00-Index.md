@@ -11,6 +11,7 @@
 - **Tests:** `./gradlew :app:testDebugUnitTest` → **15/15 passed** (9 ItemsMapperTest + 6 ItemsViewModelTest).
 - **Repo público:** https://github.com/antonioalarconvirseda/terrariawiki (1 commit inicial en `main`, MIT license).
 - **Documentación:** 30 notas en esta bóveda Obsidian (fundación + patrones + API).
+- Imágenes vía CDN directo cacheado en CF (sin Special:Redirect que rate-limiteaba).
 - Icono Tree of Life real (PNG del juego), apostrofes en URLs corregidos, sección "Receta" en detalles.
 
 ## Iteración 5 — Icono Tree of Life real + apostrofe fix + Recetas (2026-07-25)
