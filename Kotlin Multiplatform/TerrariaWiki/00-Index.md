@@ -122,7 +122,7 @@ Pendiente para próxima sesión GLM-5.2:
 - [[06-Setup-Entorno]] — Android Studio, JDK, SDK, adb, conexión del móvil
 - [[07-GitHub-y-Publicacion]] — repo público, gh CLI, LICENSE, README
 
-### Patrones Kotlin (22 notas, todos implementados en código)
+### Patrones Kotlin (23 notas, todos implementados en código)
 - [[03-Patrones-Kotlin/Feature-based-structure]]
 - [[03-Patrones-Kotlin/Clean-Architecture]]
 - [[03-Patrones-Kotlin/Material-Theme-Tokens]]
@@ -311,6 +311,29 @@ Minimax M3 (build) ejecutó 5 commits:
 - APK: 19 MB.
 - Repo público: https://github.com/antonioalarconvirseda/terrariawiki con 24 commits.
 
+## Iteración 8 — Fix rate-limit imágenes en Coil (2026-07-25)
+
+Tras 7 iteraciones de fixes, las imágenes seguían fallando intermitentemente. GLM-5.2 (plan) auditó logs del usuario y descubrió: **CloudFlare rate-limita a 429** cuando Coil lanza 50 requests simultáneas al abrir una categoría, y Coil no tiene ni control de concurrencia ni disk cache ni retry ni logging. El comportamiento "algunas cargan, otras no, y al re-scrollear otras muy lento" encaja con rate-limit aleatorio de CF.
+
+**Fix:** configurar `ImageLoader` custom con:
+- `Dispatcher(maxRequestsPerHost=5)` para no saturar CF.
+- `RateLimitInterceptor` que reintenta 429 con backoff exponencial (1s, 2s, 4s, max 3).
+- DiskCache persistente 50 MB.
+- Logging tag `CoilHttp` para debug futuro.
+
+Minimax M3 (build) ejecutó 2 commits:
+
+| # | Commit | Tipo | Cambio |
+|---|---|---|---|
+| 1 | (siguiente) | feat | `CoilImageLoaderFactory` con rate-limit, disk cache, logging; `TerrariaWikiApp` sustituye singleton; tests con MockWebServer |
+| 2 | (siguiente) | fix | `testOptions { unitTests.isReturnDefaultValues = true }` para que `android.util.Log` no falle en JVM tests |
+
+### Hand-off
+
+- Tests: **44/44** passing (4 RateLimitInterceptor + 14 ItemsMapper + 5 SearchViewModel + 6 ItemsViewModel + 7 RecipesMapper + 4 ImageUrl + 4 CategoryViewModel).
+- APK: 19 MB.
+- Repo público: https://github.com/antonioalarconvirseda/terrariawiki con 26 commits.
+
 Pendiente para próxima sesión GLM-5.2:
-- Validación en móvil: las imágenes con espacios ahora cargan; búsqueda global funciona; ítems con tap → detalle.
+- Validación en móvil: las imágenes deberían cargar **sin 429** (o reintentar automáticamente). Para verificar: `adb logcat -s CoilHttp:D` mientras se scrollea.
 - Decisión de siguiente feature: NPCs, Room cache, Dark mode, o migración KMP.
