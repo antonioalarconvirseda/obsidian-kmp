@@ -127,12 +127,18 @@ private val TerrariaDarkColors = darkColorScheme(
 
 Tras la validación en móvil (iteración 4) el usuario pidió reemplazar el placeholder por el **Tree of Life** (Living Wood Tree), el árbol icónico de la portada oficial de Terraria 1.4.
 
-**Composición del icono (vector drawable, viewport 108×108):**
+### Iteración 4 (vector generado)
+Composición del icono (vector drawable, viewport 108×108): degradado teal→verde, tronco marrón, copa de 3 capas verdes, hojas azules, castillo al fondo.
 
-- **Fondo:** degradado lineal vertical `SkyTeal (#4A93B0)` → `JungleGreen (#3B7C36)` (paleta del proyecto).
-- **Tronco:** marrón `#8B5A2B` vertical desde el centro, con sombra más oscura `#6B3F23`.
-- **Copa:** tres capas de verde: fondo `#2A5630`, medio `#3B7C36`, brillo `#4A9A3F` para profundidad.
-- **Hojas azules** dispersas `#4A93B0` (color de la paleta) para evocar el bosque mágico de Terraria 1.4.
-- **Castillo al fondo:** silueta de 5 torres en `#C0B8A0` con un toque de oro `#F2C94C` en la torre central, aludiendo a la portada oficial del juego.
+### Iteración 5 (PNG real del juego)
+El usuario proveyó un PNG real (512×512 RGBA) del árbol de Terraria. El icono actual es:
+- **Foreground:** `@drawable/tree_of_life` (el PNG provisto).
+- **Background:** `@drawable/ic_launcher_background` (degradado teal→verde, layer-list con shape).
+- **Adaptive icon:** `@mipmap-anydpi-v26/ic_launcher.xml` y `ic_launcher_round.xml` referencian ambos drawables.
 
-**Rationale:** el Tree of Life es el símbolo más reconocible de Terraria 1.4 (aparece en el logo oficial, en la pantalla de inicio, en merchandising). Más icónico que un slime, una espada o un corazón. Refleja la estética de la wiki en una sola imagen.
+**Ventajas del PNG real:**
+- Identidad de marca oficial del juego (no generado).
+- Mejor calidad visual a cualquier densidad.
+- Más rápido de renderizar que un vector complejo.
+
+**Trade-off:** requiere actualización manual del PNG si Terraria cambia de identidad de marca.

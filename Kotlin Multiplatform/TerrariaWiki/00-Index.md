@@ -10,7 +10,7 @@
 - **Lint:** `./gradlew :app:lintDebug` → SUCCESSFUL.
 - **Tests:** `./gradlew :app:testDebugUnitTest` → **15/15 passed** (9 ItemsMapperTest + 6 ItemsViewModelTest).
 - **Repo público:** https://github.com/antonioalarconvirseda/terrariawiki (1 commit inicial en `main`, MIT license).
-- **Documentación:** 29 notas en esta bóveda Obsidian (fundación + patrones + API).
+- **Documentación:** 30 notas en esta bóveda Obsidian (fundación + patrones + API).
 - **Home con 10 categorías** + infinite scroll por categoría, icono Tree of Life, chip de rareza legible, paginación completa de la wiki.
 
 ## Iteración 4 — Rediseño UX + Home categorías + icono + fixes visuales (2026-07-25)
@@ -79,7 +79,7 @@ Pendiente para próxima sesión GLM-5.2:
 - [[06-Setup-Entorno]] — Android Studio, JDK, SDK, adb, conexión del móvil
 - [[07-GitHub-y-Publicacion]] — repo público, gh CLI, LICENSE, README
 
-### Patrones Kotlin (20 notas, todos implementados en código)
+### Patrones Kotlin (21 notas, todos implementados en código)
 - [[03-Patrones-Kotlin/Feature-based-structure]]
 - [[03-Patrones-Kotlin/Clean-Architecture]]
 - [[03-Patrones-Kotlin/Material-Theme-Tokens]]
@@ -100,6 +100,7 @@ Pendiente para próxima sesión GLM-5.2:
 - [[03-Patrones-Kotlin/UX-Detail-Screen-Decisions]]
 - [[03-Patrones-Kotlin/Cargo-HOLDS-filter]]
 - [[03-Patrones-Kotlin/Home-Navigation-Pattern]]
+- [[03-Patrones-Kotlin/Recipes-API-Pattern]]
 
 ### API de Terraria (MediaWiki + Cargo)
 - [[04-API-Terraria/Endpoint-Lista]]
