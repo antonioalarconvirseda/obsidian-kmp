@@ -95,16 +95,55 @@ Devuelve `parse.text["*"]` (HTML) y `parse.wikitext["*"]` (fuente). Útil para d
 curl -I "https://terraria.wiki.gg/wiki/Special:Redirect/file/Wood.png"
 ```
 
-**A verificar durante Fase 6** — debe devolver HTTP 302 a la URL estática.
+Devuelve **HTTP 301** a la URL estática (verificado). Importante: el filename debe ir **URL-encoded con `%20`** para espacios, NO con `+` (que da 404).
 
-Si no funciona, alternativa:
 ```bash
-curl "https://terraria.wiki.gg/api.php?action=query&titles=File:Wood.png&prop=imageinfo&iiprop=url&format=json"
+# Espacios como %20 → OK
+curl -I "https://terraria.wiki.gg/wiki/Special:Redirect/file/Terra%20Blade.png"
+# → HTTP/2 301 location: https://terraria.wiki.gg/wiki/Special:Redirect/file/Terra_Blade.png
+
+# Espacios como + → 404
+curl -I "https://terraria.wiki.gg/wiki/Special:Redirect/file/Terra+Blade.png"
+# → HTTP/2 404
 ```
 
-## 7. Limitaciones conocidas
+En Kotlin usar `android.net.Uri.encode(filename)` (Android-only) o `URLEncoder.encode(filename, "UTF-8").replace("+", "%20")` (KMP-puro).
 
-- `imagefile` produce `internal_api_error_MWException` cuando se incluye en joins multi-campo. **Workaround:** omitir y obtener la URL con `Special:Redirect/file/<filename>`.
+## 7. Item con todos los campos (iteración 3)
+
+```bash
+curl "https://terraria.wiki.gg/api.php?action=cargoquery&tables=Items&fields=name,type,rare,sell,damage,defense,knockback,usetime,tooltip,internalname,itemid,listcat,imagefile,stack,hardmode,buy,autoswing,critical,velocity&where=name='Terra%20Blade'&format=json"
+```
+
+**Respuesta (campos clave):**
+```json
+{
+  "cargoquery": [{
+    "title": {
+      "name": "Terra Blade",
+      "type": "weapon^crafting material",
+      "rare": "8",
+      "sell": "<span class=\"coin\" title=\"20 Gold Coins\" data-sort-value=\"200000\">...</span>",
+      "damage": "85",
+      "defense": "",
+      "knockback": "6.5",
+      "usetime": "18",
+      "imagefile": "Terra Blade.png",
+      "listcat": "broadswords^projectile melee^Melee weapons^craftable items",
+      "stack": "9999",
+      "hardmode": "1",
+      "autoswing": "1",
+      "critical": "4",
+      "velocity": "12"
+    }
+  }]
+}
+```
+
+## 8. Limitaciones conocidas (actualizado iteración 3)
+
+- `imagefile` **SÍ funciona** (corregido en iteración 3). El `internal_api_error_MWException` que documentábamos antes no se reproduce con la lista actual de campos. Usar `imagefile` directamente.
 - El campo `rare` viene como **string** (`"0"`, `"1"`, …), no como número. Hay que parsearlo manualmente.
 - Los campos de tipo List vienen separados por `^` (no `,`). Documentado en [[Endpoint-Lista]].
 - Sin `User-Agent`, MediaWiki puede responder 403 o throttlear. Siempre enviar uno descriptivo.
+- `sell` y `buy`: parsear el `title="(\d+) (\w+) Coins"` para mostrar el valor legible. NO usar `data-sort-value` (es valor en centavos).

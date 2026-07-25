@@ -130,14 +130,35 @@ GET /api.php
 https://terraria.wiki.gg/wiki/Special:Redirect/file/Wood.png
 ```
 
-Redirige (HTTP 302) a la URL estática del archivo. Permite usar directamente como `model` en Coil sin parsear. **A verificar** con curl durante Fase 6.
+Redirige (HTTP 301) a la URL estática del archivo. Permite usar directamente como `model` en Coil sin parsear.
+
+**Importante — URL-encoding del filename (iteración 3):**
+- Si el filename tiene espacios (la mayoría: `Terra Blade.png`, `Wood Plank.png`, `'0' Statue.png`...), la URL construida con espacio literal falla sin respuesta HTTP.
+- `URLEncoder.encode(filename, "UTF-8")` codifica espacios como `+` → 404 en MediaWiki. **No usar.**
+- `android.net.Uri.encode(filename)` codifica espacios como `%20` → 301 OK a la URL final. **Usar este.**
+- En KMP, la alternativa KMP-pura es `URLEncoder.encode(...).replace("+", "%20")` (kotlin stdlib).
+
+Verificado con curl real:
+- `Special:Redirect/file/Terra Blade.png` (espacio literal) → sin respuesta (falloe).
+- `Special:Redirect/file/Terra%20Blade.png` → 301 → URL final.
+- `Special:Redirect/file/Terra+Blade.png` → 404.
 
 ---
 
 ## Tablas Cargo disponibles
 
-Confirmadas en probe:
-- `Items` (campo `imagefile` falló con MWException en join multi-campo — limitación documentada).
+Confirmadas en probe (iteración 3):
+- `Items` — funciona correctamente, incluido el campo `imagefile` (no descartar).
+
+**Campos valiosos disponibles en `Items` (incluidos en iteración 3):**
+- `imagefile` — filename directo, sin regex.
+- `critical` — probabilidad de crítico (%).
+- `velocity` — velocidad de proyectil.
+- `autoswing` — booleano (`"1"`).
+- `buy` — precio de compra (mismo formato HTML que `sell`).
+- `stack` — cantidad apilable máxima.
+- `hardmode` — booleano (`"1"` si solo aparece en modo difícil).
+- `listcat` — categorías de gameplay separadas por `^` (`broadswords^Melee weapons^craftable items`).
 
 **Por explorar (fases futuras):**
 - `NPCs`
@@ -176,3 +197,24 @@ Para mapear:
 "block^crafting material".split("^")
 // → ["block", "crafting material"]
 ```
+
+## Formato del precio de venta (`sell` y `buy`)
+
+`sell` y `buy` vienen como HTML de MediaWiki con un `data-sort-value` (en centavos) y un `title` con la cantidad legible:
+
+```html
+<span class="coin" title="20 Gold Coins" data-sort-value="200000">
+  <span class="gc">20<i> GC</i></span>
+</span>
+```
+
+**Para mostrar en la UI: parsear el `title`, NO el `data-sort-value`.** La regex correcta es:
+```kotlin
+Regex("""title="(\d+)\s+(\w+)\s+Coins"""")
+// match.groupValues[1] = "20" (cantidad)
+// match.groupValues[2] = "Gold" → abreviar a "GC"
+```
+
+Si parseas `data-sort-value="200000"` directamente y le pones "GC", obtienes "200000 GC" (incorrecto). Si parseas el `title`, obtienes "20 GC" (correcto).
+
+Mapeo de moneda: Copper→CC, Silver→SC, Gold→GC, Platinum→PC.
