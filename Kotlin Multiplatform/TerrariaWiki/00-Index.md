@@ -311,27 +311,36 @@ Minimax M3 (build) ejecutó 5 commits:
 - APK: 19 MB.
 - Repo público: https://github.com/antonioalarconvirseda/terrariawiki con 24 commits.
 
-## Iteración 9 — Token bucket preventivo (2026-07-26)
+## Iteración 10 — User-Agent era la causa raíz (2026-07-26)
 
-El fix de iteración 8 funcionó pero reveló un **bug de diseño** del propio `RateLimitInterceptor`. El usuario reportó: "las 10 primeras imágenes cargan muy bien, el resto no, y si vuelvo a hacer scroll a veces cargan". El re-scroll "a veces funciona" descartó problemas de encoding: era el `Thread.sleep(1-4s)` **secuestrando los 5 threads del dispatcher OkHttp**, bloqueando todas las requests encoladas.
+Tras iteración 9, el usuario reportó "a partir de las 11 imágenes solo cargan al rato". **Esta vez ejecutó `adb logcat -s CoilHttp:D` y compartió los logs**. El archivo `/tmp/coil_diag.txt` (44 líneas) reveló evidencia rotunda:
 
-GLM-5.2 (plan) re-investigó y propuso sustituir el retry reactivo por un **token bucket preventivo** que regula throughput a 10 req/s antes de `chain.proceed()`. El usuario eligió esta opción y rechazó un retry residual.
+- 13 peticiones espaciadas ~100ms exactos → token bucket funcionaba.
+- **TODAS 429 desde la primera** → no era throughput, era identificación.
+- `cargoquery` por Ktor (api.php) sí funcionaba.
+- La diferencia: Ktor añade `User-Agent` (`HttpClientFactory.kt:69`), Coil no.
+
+Causa raíz: el `OkHttpClient` de Coil no mandaba `User-Agent`, así que CloudFlare bloqueaba TODAS las imágenes como si fueran bots. El token bucket había funcionado perfectamente; era otra capa la que fallaba.
 
 Minimax M3 (build) ejecutó:
 
 | # | Commit | Tipo | Cambio |
 |---|---|---|---|
-| 1 | `c590a49` | refactor | `TokenBucketInterceptor` con `AtomicLong.compareAndSet` (10 req/s sostenido). `MAX_CONCURRENT_PER_HOST` 5→10. Eliminado retry 429. `TokenBucketInterceptorTest` reemplaza `RateLimitInterceptorTest`. |
+| 1 | `dadc37d` | feat | `UserAgentInterceptor` con `User-Agent: TerrariaWikiApp/0.1.0` + retry 1 intento con `Retry-After` parseo. `CoilConfig.MAX_RETRIES_429=1`, `RETRY_SLEEP_MS=500`. TokenBucket movido a throttle-only (logging va al UserAgent). |
 
 ### Hand-off
 
-- Tests: **44/44** passing (4 TokenBucket + 14 ItemsMapper + 5 SearchViewModel + 6 ItemsViewModel + 7 RecipesMapper + 4 ImageUrl + 4 CategoryViewModel).
+- Tests: **46/46** passing (2 UserAgent + 4 TokenBucket + 14 ItemsMapper + 5 SearchVM + 6 ItemsVM + 7 RecipesMapper + 4 ImageUrl + 4 CategoryVM).
 - APK: 19 MB.
 - Repos públicos:
-  - Código: https://github.com/antonioalarconvirseda/terrariawiki — 27 commits.
-  - Docs: https://github.com/antonioalarconvirseda/obsidian-kmp — 11 commits.
+  - Código: https://github.com/antonioalarconvirseda/terrariawiki — 28 commits.
+  - Docs: https://github.com/antonioalarconvirseda/obsidian-kmp — 12 commits.
+
+### Lección
+
+**No iterar sin logs reales.** Iteraciones 8 y 9 asumimos "rate-limit por throughput" sin evidencia. Los logs reales mostraron que era un problema de identificación. **Siempre pedir logs antes de iterar**.
 
 Pendiente para próxima sesión GLM-5.2:
-- Validación en móvil: `adb logcat -s CoilHttp:D` debería mostrar **solo `200 ...` a cadencia ~10/s, sin 429**.
-- Scroll continuo debería cargar imágenes progresivamente **sin el síntoma** de "10 primeras cargan, el resto no".
+- Validación en móvil: `adb logcat -s CoilHttp:D` debería mostrar **mayoría `200`**, quizá algún `429` aislado seguido de `retry -> 200`.
+- Si los `429` persisten: iteración 11 con thumbnail URLs `https://terraria.wiki.gg/images/thumb/<file>/32px-<file>` para mejorar cache hit ratio.
 - Decisión de siguiente feature: NPCs, Room cache, Dark mode, o migración KMP.

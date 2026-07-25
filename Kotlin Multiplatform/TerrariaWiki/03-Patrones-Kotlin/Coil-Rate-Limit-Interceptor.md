@@ -250,3 +250,107 @@ Comportamiento esperado en la app:
 - **Riesgo: latencia inicial alta en listas grandes.** Una lista de 50 items tarda ~5s en cargar la última imagen (50 × 100ms). Aceptable: mejor 5s garantizados que "nunca carga".
 - **Riesgo: si CF cambia su rate-limit a <10 req/s.** Mitigación: subir `TOKEN_PERIOD_MS` a 150-200ms es un cambio de una constante. Documentar en `CoilConfig`.
 - **Riesgo: si migramos a KMP, este interceptor OkHttp no es portable.** Deuda técnica documentada; el patrón (atomic CAS sobre Long + sleep hasta slot reservado) es trivialmente portable a Ktor HttpRequestPipeline phase o a un `HttpSend` plugin de Ktor.
+
+---
+
+## Iteración 10: el verdadero culpable era el User-Agent (2026-07-26)
+
+### Contexto
+
+Tras iteración 9, el usuario volvió a reportar: **"a partir de las 11 imágenes solo cargan al rato si empiezas a hacer scroll al rato"**. Y añadió: "no he podido depurarlo si es porque el servidor bloquea las imágenes". Esta vez el usuario ejecutó los comandos `adb logcat` y compartió `/tmp/coil_diag.txt` (44 líneas).
+
+### Lo que los logs revelaron (evidencia rotunda)
+
+El log `/tmp/coil_diag.txt` mostraba:
+
+```
+07-26 01:18:09.280  CoilHttp: 429 https://terraria.wiki.gg/images/Bouncy_Bomb.png
+07-26 01:18:10.098  CoilHttp: 429 https://terraria.wiki.gg/images/Bouncy_Dynamite.png
+07-26 01:18:10.196  CoilHttp: 429 https://terraria.wiki.gg/images/Bouncy_Grenade.png
+... (13 peticiones, TODAS 429, espaciadas ~100ms)
+07-26 01:18:11.461  CoilHttp: 429 https://terraria.wiki.gg/images/Cannon.png
+... (pausa de 14s)
+07-26 01:18:25.596  CoilHttp: 429 https://terraria.wiki.gg/images/Cannonball.png
+... (21 más, TODAS 429)
+07-26 01:18:28.829  TerrariaHttp: REQUEST: https://terraria.wiki.gg/api.php?action=cargoquery&...
+```
+
+**Hallazgos:**
+
+1. **El token bucket SÍ funcionaba.** Las peticiones estaban espaciadas ~100ms exactos. El throttle era correcto.
+2. **TODAS las imágenes devolvían 429**, no había ni un solo 200.
+3. **La API `cargoquery` (Ktor) sí funcionaba.** Era solo `/images/` lo bloqueado.
+4. **El primer request de la sesión ya era 429.**
+
+### Causa raíz
+
+Diferencia clave entre Ktor y Coil: Ktor añade `User-Agent` a cada request (`HttpClientFactory.kt:69`: `header("User-Agent", TerrariaApiConfig.USER_AGENT)`). El `OkHttpClient` de Coil **NO mandaba User-Agent**. CF bloquea agresivamente a clientes anónimos, especialmente contra `/images/` (probable fingerprint de bots/scrapers).
+
+Adicionalmente, la IP podía estar marcada por spam de iteraciones 7-8, lo que intensificaba el bloqueo.
+
+### Decisión
+
+Añadir un `UserAgentInterceptor` (OkHttp `Interceptor` síncrono) que ponga `User-Agent` a cada request de imagen si no existe. Aprovechar el mismo interceptor para añadir un retry reactivo de **1 solo intento** con `Thread.sleep(500)` cap, parseando `Retry-After` si CF lo manda. Esto es la recuperación reactiva mínima que complementaba al token bucket preventivo de iteración 9.
+
+### Implementación Kotlin
+
+```kotlin
+class UserAgentInterceptor(
+    private val userAgent: String = TerrariaApiConfig.USER_AGENT,
+    private val maxRetries429: Int = CoilConfig.MAX_RETRIES_429,  // 1
+    private val retrySleepMs: Long = CoilConfig.RETRY_SLEEP_MS    // 500L
+) : Interceptor {
+    override fun intercept(chain: Interceptor.Chain): Response {
+        val original = chain.request()
+        val request = if (original.header("User-Agent") == null) {
+            original.newBuilder().header("User-Agent", userAgent).build()
+        } else original
+        var response = chain.proceed(request)
+        Log.d(CoilConfig.LOG_TAG, "${response.code} ${request.url.toString().take(120)}")
+        var attempts = 0
+        while (response.code == 429 && attempts < maxRetries429) {
+            val retryAfter = response.header("Retry-After")?.toLongOrNull()
+            val sleepMs = retryAfter?.times(1000)?.coerceAtMost(retrySleepMs) ?: retrySleepMs
+            Log.w(CoilConfig.LOG_TAG, "429 rate-limited, retrying in ${sleepMs}ms ${request.url.toString().take(80)}")
+            response.close()
+            Thread.sleep(sleepMs)
+            response = chain.proceed(request)
+            Log.d(CoilConfig.LOG_TAG, "retry -> ${response.code} ${request.url.toString().take(120)}")
+            attempts++
+        }
+        return response
+    }
+}
+```
+
+### Wiring en OkHttpClient
+
+```kotlin
+val okHttpClient = OkHttpClient.Builder()
+    .dispatcher(dispatcher)
+    .addInterceptor(TokenBucketInterceptor())   // throttle 10/s
+    .addInterceptor(UserAgentInterceptor())     // añade UA + retry 1
+    .build()
+```
+
+Orden importa: TokenBucket throttlea entrada, UserAgent aplica UA. Si un request ya tiene UA (poco probable con Coil pero posible en tests), se respeta.
+
+### TokenBucket se simplifica
+
+Antes de iteración 10, el `TokenBucketInterceptor` también logueaba. Se movió el logging al `UserAgentInterceptor` para que `TokenBucketInterceptor` sea solo throttle puro. Tests intactos.
+
+### Tests del UserAgentInterceptor (2)
+
+`UserAgentInterceptorTest.kt`:
+1. `adds User-Agent header when request has none` — MockWebServer verifica header recibido.
+2. `preserves existing User-Agent header` — request con UA pre-existente no se sobrescribe.
+
+### Plan B (si UA no basta)
+
+Si tras añadir UA seguimos recibiendo 429 desde la primera petición, queda como deuda: implementar thumbnail URLs `https://terraria.wiki.gg/images/thumb/<file>/32px-<file>` en lista (reducción 50-100KB → 2-5KB, mejor cache edge hit). En `ItemDetailScreen` se carga la versión full. Aplazado a iteración 11 si hace falta.
+
+### Lección aprendida
+
+**No asumir sin logs reales.** Iteraciones 8 y 9 supusimos que el problema era "rate-limit por throughput" o "thread starvation". Los logs reales demostraron que era algo mucho más simple: el cliente HTTP no se identificaba. Ktor lo hacía por defecto, Coil no. **Siempre pedir logs antes de iterar**.
+
+**Lección de diseño:** OkHttp NO añade `User-Agent` por defecto. Es responsabilidad del cliente. Cualquier nueva dependencia HTTP debe verificar que envía UA identificable.
