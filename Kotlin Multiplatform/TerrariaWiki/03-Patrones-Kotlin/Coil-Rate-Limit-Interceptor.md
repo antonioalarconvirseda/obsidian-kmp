@@ -354,3 +354,23 @@ Si tras añadir UA seguimos recibiendo 429 desde la primera petición, queda com
 **No asumir sin logs reales.** Iteraciones 8 y 9 supusimos que el problema era "rate-limit por throughput" o "thread starvation". Los logs reales demostraron que era algo mucho más simple: el cliente HTTP no se identificaba. Ktor lo hacía por defecto, Coil no. **Siempre pedir logs antes de iterar**.
 
 **Lección de diseño:** OkHttp NO añade `User-Agent` por defecto. Es responsabilidad del cliente. Cualquier nueva dependencia HTTP debe verificar que envía UA identificable.
+
+---
+
+## ✅ Epílogo — Verificación en móvil (2026-07-26)
+
+El fix **funciona correctamente**. Tras instalar el APK con `UserAgentInterceptor` y volver a capturar logs con `adb logcat -s CoilHttp:D`, el comportamiento observado es:
+
+- **Mayoría de peticiones devuelven 200** desde la primera request de la sesión.
+- Algunos `429` aislados aparecen, pero el retry de 1 intento (con `Thread.sleep(500)` y `Retry-After` parseo) los recupera inmediatamente: `429 ... -> retry -> 200`.
+- Scroll continuo por categorías con 100+ items ya no se atasca tras las primeras ~10 imágenes. Carga progresivamente a ~10 req/s.
+- El síntoma "re-scroll a veces funciona" ha desaparecido.
+
+**Causa raíz confirmada**: la ausencia de `User-Agent` en el `OkHttpClient` de Coil hacía que CloudFlare respondiera `429` a prácticamente toda petición de imagen como medida anti-bot. Ktor sí mandaba UA, por eso la API `api.php` funcionaba.
+
+**Lección generalizable** (con detalle en `[[Debug-Lecciones-User-Agent]]`):
+1. **OkHttp NO añade `User-Agent` por defecto.** Ktor sí.
+2. Si una API funciona y otra no en la misma app, **comprobar headers comunes** antes de asumir rate-limit o IP bloqueada.
+3. **Siempre pedir `adb logcat` antes de iterar.** 2 iteraciones anteriores (8 y 9) fueron pérdidas por asumir.
+
+**Deuda técnica cerrada** en esta iteración: el problema de imágenes intermitentes está resuelto. No hace falta Plan B (thumbnails).

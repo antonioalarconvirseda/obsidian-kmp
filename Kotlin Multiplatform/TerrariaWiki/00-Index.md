@@ -122,7 +122,7 @@ Pendiente para próxima sesión GLM-5.2:
 - [[06-Setup-Entorno]] — Android Studio, JDK, SDK, adb, conexión del móvil
 - [[07-GitHub-y-Publicacion]] — repo público, gh CLI, LICENSE, README
 
-### Patrones Kotlin (23 notas, todos implementados en código)
+### Patrones Kotlin (24 notas, todos implementados en código)
 - [[03-Patrones-Kotlin/Feature-based-structure]]
 - [[03-Patrones-Kotlin/Clean-Architecture]]
 - [[03-Patrones-Kotlin/Material-Theme-Tokens]]
@@ -145,6 +145,7 @@ Pendiente para próxima sesión GLM-5.2:
 - [[03-Patrones-Kotlin/Home-Navigation-Pattern]]
 - [[03-Patrones-Kotlin/Recipes-API-Pattern]]
 - [[03-Patrones-Kotlin/Search-Global-Pattern]]
+- [[03-Patrones-Kotlin/Debug-Lecciones-User-Agent]]
 
 ### API de Terraria (MediaWiki + Cargo)
 - [[04-API-Terraria/Endpoint-Lista]]
@@ -340,7 +341,17 @@ Minimax M3 (build) ejecutó:
 
 **No iterar sin logs reales.** Iteraciones 8 y 9 asumimos "rate-limit por throughput" sin evidencia. Los logs reales mostraron que era un problema de identificación. **Siempre pedir logs antes de iterar**.
 
+### ✅ Validación en móvil (2026-07-26)
+
+El fix **funciona correctamente**. Verificado en el dispositivo del usuario:
+
+- `adb logcat -s CoilHttp:D` muestra **mayoría `200`** desde la primera request. Algunos `429` aislados se recuperan con `retry -> 200`.
+- Scroll continuo carga imágenes progresivamente. **El síntoma "10 primeras cargan, el resto no" ha desaparecido**.
+- No hace falta Plan B (thumbnail URLs). La causa raíz era únicamente el `User-Agent` ausente.
+
+**Notas actualizadas**:
+- `[[Coil-Rate-Limit-Interceptor]]` → sección "Iteración 10" con epílogo VERIFICADO.
+- `[[Debug-Lecciones-User-Agent]]` → nueva nota standalone con el patrón aprendido (3 lecciones generalizables: OkHttp sin UA, comparar headers si dos APIs se comportan distinto, pedir logs antes de iterar).
+
 Pendiente para próxima sesión GLM-5.2:
-- Validación en móvil: `adb logcat -s CoilHttp:D` debería mostrar **mayoría `200`**, quizá algún `429` aislado seguido de `retry -> 200`.
-- Si los `429` persisten: iteración 11 con thumbnail URLs `https://terraria.wiki.gg/images/thumb/<file>/32px-<file>` para mejorar cache hit ratio.
 - Decisión de siguiente feature: NPCs, Room cache, Dark mode, o migración KMP.
