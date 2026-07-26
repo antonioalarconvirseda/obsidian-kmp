@@ -3,10 +3,12 @@
 ## Contexto
 En Clean Architecture, la capa `data` es la única que sabe cómo obtener datos (Ktor, Room, SharedPreferences, etc.). La capa `domain` necesita listas de `Item` pero no debe saber de dónde vienen. El ViewModel (en `ui`) tampoco debe conocer los detalles.
 
+> **Corrección (iteración 18, 2026-07-26):** la interfaz vivía originalmente en `features/items/data/`, contradiciendo la propia regla del proyecto "`domain` nunca importa de `data`" — un audit de arquitectura lo detectó (`GetItemsUseCase` importaba `...data.ItemsRepository`). Se movió el *port* a `domain/` dejando solo el Impl en `data/`. Sección actualizada para reflejar el estado correcto.
+
 ## Decisión
 Aplicar el patrón **Repository**:
-- Interfaz `ItemsRepository` en `features/items/data/` (expuesta al domain).
-- Implementación `ItemsRepositoryImpl` con lógica real (Ktor + cache en memoria).
+- Interfaz `ItemsRepository` (el *port*) en `features/items/domain/` — es un contrato Kotlin puro, sin deps de Ktor, así que pertenece a `domain` y no a `data`. Esto también lo deja 100% portable a `commonMain` de cara a una futura migración KMP.
+- Implementación `ItemsRepositoryImpl` en `features/items/data/`, con la lógica real (Ktor + cache en memoria).
 - Los ViewModels reciben `ItemsRepository` por inyección (Koin), nunca `ItemsApi`.
 
 El repository además:

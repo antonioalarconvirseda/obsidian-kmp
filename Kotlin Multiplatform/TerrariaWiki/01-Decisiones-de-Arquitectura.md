@@ -66,6 +66,8 @@ La elección de librerías (Ktor, Koin, kotlinx.serialization, Coroutines) es **
 
 El **dominio** (`Item`, UseCases) y la **capa de datos pura** (DTO, Mapper, Repository interface) sí son portables directamente a `commonMain` sin cambios. La migración real será una iteración propia, no un parche.
 
+**Nota (iteración 18, 2026-07-26):** un audit de arquitectura encontró que la interfaz `Repository` vivía en `data/` en vez de `domain/`, contradiciendo esta misma afirmación. Corregido — ver [[03-Patrones-Kotlin/Repository-Pattern]].
+
 ---
 
 ## 4. StateFlow + UiState sealed (en lugar de LiveData + state suelto)
