@@ -43,19 +43,23 @@ data class Item(
 // data/ItemsMapper.kt
 private const val LIST_DELIMITER = "^"
 
+private fun String?.cargoValueOrNull(): String? =
+    this?.takeIf { it.isNotBlank() && it != "None" }
+
 fun ItemDto.toDomain(): Item = Item(
     name = name,
     types = type.split(LIST_DELIMITER).filter { it.isNotBlank() },
     rarity = rare.toIntOrNull() ?: 0,
-    tooltip = tooltip?.takeIf { it.isNotBlank() }?.stripHtml(),
+    tooltip = tooltip.cargoValueOrNull()?.stripHtml(),
     damage = damage?.toIntOrNull(),
     defense = defense?.toIntOrNull(),
     knockback = knockback?.toFloatOrNull(),
     useTime = usetime?.toIntOrNull(),
     sellRaw = sell?.takeIf { it.isNotBlank() },
-    internalName = internalname?.takeIf { it.isNotBlank() },
+    internalName = internalname.cargoValueOrNull(),
     wikiId = itemid?.toIntOrNull(),
-    imageFilename = image?.extractFileName()
+    imageFilename = imageFile.cargoValueOrNull() ?: image?.extractFileName(),
+    stack = stack.cargoValueOrNull()
 )
 ```
 
@@ -67,6 +71,7 @@ fun ItemDto.toDomain(): Item = Item(
 - **`imagefile` SÍ funciona** (corregido en iteración 3). Da el filename directo, sin regex. Usar como prioridad; `image` (wikitext) solo como fallback.
 - **URL-encoding de filenames** (iteración 3): la mayoría de filenames tienen espacios (`Terra Blade.png`, `Wood Plank.png`, `'0' Statue.png`...). `URLEncoder.encode` produce `+` para espacios → 404 en MediaWiki. Usar `android.net.Uri.encode` (que produce `%20`) o `URLEncoder.encode(...).replace("+", "%20")` para KMP.
 - **Booleans como `"1"` / `""`**: `autoswing` y `hardmode` llegan como string. Comparar `== "1"` para `true`.
+- **Cargo devuelve el string literal `"None"` para campos escalares sin valor, no `null` JSON.** Descubierto en la categoría Armor (2026-07-26): además de piezas individuales, Cargo agrega una fila "set" por cada armadura completa (`"Adamantite armor"`, `"Bee armor"`...) cuyo `internalname` viene como `"None"` literal. `?.takeIf { it.isNotBlank() }` no lo filtra (`"None"` no está en blanco), así que sobrevivía tal cual — 21+ items con `internalName == "None"` en la muestra de 100 filas de la API real. Fix: helper `cargoValueOrNull()` que además de `isNotBlank()` excluye el string `"None"`, aplicado a los 4 campos vulnerables (`internalname`, `imagefile`, `stack`, `tooltip`). Ver [[Compose-LazyColumn]] para el efecto downstream (colisión de keys). **Cualquier campo `String?` nuevo leído de Cargo debe pasar por este helper**, no asumir que ausencia = blank/null.
 
 ## Alternativas descartadas
 - **Reutilizar el mismo DTO como modelo de dominio:** cambios de la API rompen la app; tipos permisivos en todo el código.
