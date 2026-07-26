@@ -3,7 +3,7 @@ plantilla: patrón
 secciones: [Contexto, Decisión, Implementación Kotlin, Alternativas descartadas, Riesgos & mitigación]
 ---
 
-> **⚠️ Revertido en Iteración 14.** El usuario probó esta solución en móvil y no le convenció ("no me convence absolutamente nada sobretodo los iconos"). Compartió capturas de la wiki Fandom de Terraria como referencia: usa sprites reales del juego, no formas abstractas. Se sustituyó `PixelIcon` por imágenes reales de items vía el mismo pipeline Coil/CDN que ya usaba `ItemCard` — ver [[03-Patrones-Kotlin/Coil-Image-Loading]] para ese pipeline, y la entrada "Iteración 14" en [[00-Index]]. Esta nota se conserva como historial de la decisión descartada y su porqué, no como el estado vigente del código.
+> **⚠️ Revertido en Iteración 14.** El usuario probó esta solución en móvil y no le convenció ("no me convence absolutamente nada sobretodo los iconos"). Compartió capturas de la wiki Fandom de Terraria como referencia: usa sprites reales del juego, no formas abstractas. Se sustituyó `PixelIcon` por imágenes reales de items vía el mismo pipeline Coil/CDN que ya usaba `ItemCard` — ver [[03-Patrones-Kotlin/Coil-Image-Loading]] para ese pipeline, y [[Iteraciones/Iteracion-14]] para el detalle completo de esa iteración. Esta nota se conserva como historial de la decisión descartada y su porqué, no como el estado vigente del código.
 
 # Pixel Icon Rendering
 
