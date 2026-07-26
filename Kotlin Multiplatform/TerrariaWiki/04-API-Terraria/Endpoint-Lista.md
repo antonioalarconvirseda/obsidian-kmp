@@ -147,7 +147,13 @@ Verificado con curl real:
 
 ## Tablas Cargo disponibles
 
-Confirmadas en probe (iteración 3):
+**Lista completa confirmada (iteración 17, `action=cargotables`) — solo 12 tablas existen en total:**
+```
+Drops, Equipinfo, Exclusive, History, Imageinfo, Items, Modifiers,
+NPCs, Recipes, Weapon_source, _fileData, _pageData
+```
+No hay tabla `Events`, `Enemies` ni `Biomes` — si una feature futura las necesita, la data NO viene de Cargo (ver [[../03-Patrones-Kotlin/Static-Domain-Catalog]] para el patrón alternativo usado con Events).
+
 - `Items` — funciona correctamente, incluido el campo `imagefile` (no descartar).
 
 **Campos valiosos disponibles en `Items` (incluidos en iteración 3):**
@@ -160,13 +166,17 @@ Confirmadas en probe (iteración 3):
 - `hardmode` — booleano (`"1"` si solo aparece en modo difícil).
 - `listcat` — categorías de gameplay separadas por `^` (`broadswords^Melee weapons^craftable items`).
 
+**`NPCs` (confirmada en iteración 17, usada para la feature Bosses):**
+- Campos: `name, nameraw, image, type, environment, ai, damage, life, defense, knockback, banner, bannername, money, npcid, immunities`.
+- `type HOLDS 'boss'` filtra solo bosses (mismo operador `HOLDS` que en `Items`, ver [[../03-Patrones-Kotlin/Cargo-HOLDS-filter]]).
+- `life`, `defense`, `damage`, `knockback` vienen como **HTML con múltiples modos** (`<span class="m-normal">50000</span><span class="ssep">/</span><span class="m-expert">75000</span>...`), no como números planos — hay que limpiar tags Y wikitext `[[...]]` (`[[Category:...]]`, `[[Expert Mode|140]]`), no solo HTML. Regex adicional a la de `sell`/`buy` de Items.
+- `nameraw` es el nombre en texto plano (sin el markup `[[Betsy|Betsy]]<span class="eico"...` de `name`) — usar `nameraw`, no `name`, para mostrar/filtrar.
+- **Cuidado:** `nameraw` no es único — "Dark Mage" aparece dos veces (tiers T1/T3, tipo `boss` ambos). Ver [[../03-Patrones-Kotlin/Compose-LazyColumn]] riesgo de key duplicada.
+
 **Por explorar (fases futuras):**
-- `NPCs`
-- `Enemies`
-- `Biomes`
-- `Recipes` (joins)
-- `Buffs`
-- `Items` con joins a `Recipes`
+- `Enemies` normales (no boss) — dentro de la misma tabla `NPCs`, filtrando `type` distinto de `boss`.
+- `Recipes` (joins) — ya en uso parcial vía `RecipesApiImpl`.
+- `Drops`, `Modifiers`, `Weapon_source` — sin explorar aún.
 
 Para listar todas las tablas disponibles:
 ```

@@ -140,7 +140,44 @@ curl "https://terraria.wiki.gg/api.php?action=cargoquery&tables=Items&fields=nam
 }
 ```
 
-## 8. Limitaciones conocidas (actualizado iteración 3)
+## 9. Listar bosses (tabla `NPCs`, iteración 17)
+
+```bash
+curl "https://terraria.wiki.gg/api.php?action=cargoquery&tables=NPCs&fields=nameraw,type,image,life,defense,damage,knockback&where=type%20HOLDS%20%22Boss%22&limit=5&format=json"
+```
+
+**Respuesta real (recortada, un boss):**
+```json
+{
+  "cargoquery": [{
+    "title": {
+      "nameraw": "Betsy",
+      "type": "boss",
+      "image": "<span class=\"npcimg\">[[File:Animated Betsy.gif|link=]]</span>",
+      "life": "<span class=\"npcstat\"><span class=\"m-normal m-journey\">50000</span><span class=\"ssep\">/</span><span class=\"m-expert mode-exclusive expert\"><span class=\"s\">75000</span></span>...</span>",
+      "defense": "<span class=\"npcstat\"><span class=\"m-all\">38</span></span>",
+      "damage": "...(bloque HTML largo, múltiples modos + notas de contacto/proyectil)...",
+      "knockback": "<span class=\"npcstat\"><span class=\"m-all\">100%</span></span>"
+    }
+  }]
+}
+```
+
+A diferencia de `Items`, aquí **no existe un campo plano equivalente a `imagefile`** para los stats — hay que limpiar HTML *y* wikitext `[[...]]` del campo completo. Ver [[Cargo-envelopes]] y [[../03-Patrones-Kotlin/Cargo-HOLDS-filter]].
+
+## 10. Comprobar tablas Cargo existentes (iteración 17)
+
+```bash
+curl "https://terraria.wiki.gg/api.php?action=cargotables&format=json"
+```
+
+```json
+{"cargotables":["Drops","Equipinfo","Exclusive","History","Imageinfo","Items","Modifiers","NPCs","Recipes","Weapon_source","_fileData","_pageData"]}
+```
+
+Usado para confirmar (antes de implementar Events) que **no existe tabla `Events`** — decisión documentada en [[../03-Patrones-Kotlin/Static-Domain-Catalog]].
+
+## 11. Limitaciones conocidas (actualizado iteración 3)
 
 - `imagefile` **SÍ funciona** (corregido en iteración 3). El `internal_api_error_MWException` que documentábamos antes no se reproduce con la lista actual de campos. Usar `imagefile` directamente.
 - El campo `rare` viene como **string** (`"0"`, `"1"`, …), no como número. Hay que parsearlo manualmente.
