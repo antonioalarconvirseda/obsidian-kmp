@@ -14,6 +14,126 @@
 - Imágenes vía CDN directo cacheado en CF (sin Special:Redirect que rate-limiteaba).
 - Icono Tree of Life real (PNG del juego), apostrofes en URLs corregidos, sección "Receta" en detalles.
 
+## Iteración 16 — Dark mode "Cielo Nocturno" (reemplaza Underworld) + hierba más fiel (2026-07-26)
+
+Tras probar Iteración 15, el usuario reportó dos puntos: la franja de hierba se veía "cutre" (quería algo más fiel a la textura real del juego/la wiki), y el dark mode seguía predominando en naranja/marrón (paleta "Underworld" de Iteración 12) — pidió explícitamente que se eligieran colores agradables, delegando la decisión. Se confirmó por pregunta el pivote de identidad del dark mode antes de implementar.
+
+| Cambio | Archivo(s) | Descripción |
+|---|---|---|
+| revert | `Color.kt` | Se eliminan los tokens "Underworld" (`ObsidianBlack`, `AshSurface`, `AshSurfaceAlt`, `LavaOrange`, `EmberRed`, `HellstoneOrange`, `MagmaCrust`, `BrimstoneYellow`, `CinderWhite`) |
+| feat | `Color.kt` | Nuevos tokens "Cielo Nocturno" (`NightBackground`, `NightSurface`, `NightSurfaceAlt`, `NightOutline`, `StarlightWhite`) + `DirtBrown`/`GrassHighlight` para la hierba |
+| refactor | `Theme.kt` | `TerrariaDarkColors` reconstruido: `primary`/`secondary`/`tertiary`/`error` ahora son los MISMOS vals que el modo claro (`SkyTeal`/`JungleGreen`/`GoldGem`/`SlimeRed`), solo los neutros de fondo/superficie cambian |
+| refactor | `InventorySlotCard.kt` | `GrassTopAccent` rediseñado: 24 columnas finas con altura de verde variable pero fija (`GRASS_COLUMN_HEIGHTS`, reproducible) sobre base marrón, más resaltes en columnas puntuales — reemplaza el zigzag simétrico anterior |
+
+### Documentación actualizada
+- [[05-UI-Design-System]] — paleta dark reescrita ("Cielo Nocturno"), `GrassTopAccent` actualizado.
+- [[03-Patrones-Kotlin/Material-Theme-Tokens]] — riesgo de Underworld marcado como revertido, snippet actualizado.
+
+### Hand-off
+- Build/tests: sin cambios de lógica de negocio, 51/51 se mantiene.
+- **Pendiente:** validación visual en dispositivo — este entorno sigue sin `adb`.
+- Lección repetida: el dark mode "Underworld" ya había pasado por una ronda de diseño propio (Iteración 12) antes de que el usuario lo viera en pantalla real y lo rechazara — ratifica la lección de Iteración 14 sobre validar con referencias/capturas antes de invertir en una identidad visual completa.
+
+## Iteración 15 — Paleta más viva, borde de hierba, widgets de Home (2026-07-26)
+
+El grid de categorías con sprites reales (Iteración 14) convenció más, pero el usuario pidió seguir acercándose a la referencia: colores más vivos ("ese azul chulo" de la wiki, no pastel), el detalle de borde de hierba encima de las tarjetas de categoría, y más contenido en Home (mensaje de bienvenida + últimas versiones, como los widgets de dashboard de la wiki). Se validaron los 3 puntos con preguntas antes de implementar.
+
+| Cambio | Archivo(s) | Descripción |
+|---|---|---|
+| feat | `Color.kt` | Saturación de la paleta base + acentos de bioma subida ~+22% en HSL (mismo hue); `StoneGray` excluido a propósito (es el único token neutro) |
+| feat | `InventorySlotCard.kt` | Parámetro `topAccent: Boolean` + `GrassTopAccent` (Canvas, franja verde con borde zigzag) |
+| feat | `HomeScreen.kt` | `CategoryCard` activa `topAccent = true`; nuevos `WelcomeCard`/`LatestVersionsCard` como items de ancho completo (`GridItemSpan(maxLineSpan)`) antes del grid de categorías |
+
+### Documentación actualizada
+- [[05-UI-Design-System]] — tabla de paleta con los nuevos hex, `GrassTopAccent` y los widgets de Home documentados.
+
+### Hand-off
+- Build/tests: sin cambios de lógica de negocio, 51/51 se mantiene.
+- **Nota:** `LatestVersionsCard` tiene contenido hardcodeado (no hay endpoint de versión en la API Cargo) — recordar actualizarlo a mano si Terraria libera una versión nueva.
+- **Pendiente:** validación visual en dispositivo — este entorno sigue sin `adb`.
+
+## Iteración 14 — Ajuste Home v2: sprites reales + grid 3 columnas (revierte Iteración 13) (2026-07-26)
+
+El usuario probó la Iteración 13 (iconos `PixelIcon` + layout banner) en móvil y no le convenció en absoluto, especialmente los iconos abstractos. Pidió mirar la wiki Fandom de Terraria (`terraria.fandom.com/es/wiki/Wiki_Terraria`) como referencia directa. `WebFetch` devolvió 402 y `curl` directo (con varios User-Agent) devolvió 403 — Cloudflare bloquea el scraping del sitio — así que el usuario compartió 2 capturas de pantalla, que sí se pudieron analizar visualmente.
+
+La referencia mostraba: grid denso de 6 columnas con tarjetas pequeñas cuadradas, **sprites reales del juego** (no formas dibujadas) arriba + nombre debajo, fondo neutro oscuro igual para todas las categorías (el color viene del propio sprite, no de un tinte por categoría). Se validaron las decisiones con el usuario ANTES de implementar esta vez (lección aprendida de Iteración 13, donde se implementó sin confirmar visualmente primero).
+
+| Cambio | Archivo(s) | Descripción |
+|---|---|---|
+| revert | `PixelCategoryIcons.kt` (eliminado) | Se descarta el enfoque de iconos dibujados a mano de Iteración 13 |
+| feat | `ItemCategory.kt` | Nuevo campo `representativeImageFile: String` — un item real por categoría (`"Terra Blade.png"`, `"Wood.png"`, etc.) |
+| refactor | `HomeScreen.kt` | Grid `Fixed(2)`→`Fixed(3)`; `CategoryCard` vuelve a `Column` compacta (cuadrada, `aspectRatio(1f)`) con `AsyncImage` real vía Coil/CDN en vez de icono dibujado; fondo de tarjeta vuelve a neutro (sin tinte de bioma) |
+
+### Documentación actualizada
+- [[03-Patrones-Kotlin/Pixel-Icon-Rendering]] — marcada como revertida al inicio, con el motivo, se conserva como historial.
+- [[05-UI-Design-System]] — iconografía y `CategoryCard` actualizados de nuevo.
+
+### Hand-off
+- Build/tests: sin cambios de lógica de negocio, 51/51 se mantiene.
+- **Riesgo abierto:** solo `"Terra Blade.png"` y `"Wood.png"` son filenames verificados (ya usados en tests existentes); el resto de `representativeImageFile` son nombres de items conocidos pero no verificados contra el CDN real desde este entorno (sin acceso de red a imágenes). Si alguna categoría muestra el icono de error en el móvil, es un ajuste de una línea en `ItemCategory.kt` una vez el usuario confirme el nombre exacto.
+- **Pendiente:** validación visual en dispositivo — este entorno sigue sin `adb`.
+- Lección para iteraciones futuras de UI: cuando el usuario tenga una referencia visual concreta (captura, URL), pedirla y validarla ANTES de implementar, no después — evita una ronda de trabajo descartado.
+
+## Iteración 13 — Ajuste Home: iconos pixel custom + layout banner (2026-07-26)
+
+Tras probar la Iteración 12 en móvil, el usuario confirmó que le gustó el resultado global (fuentes y descripciones ampliadas "encantaron"), pero señaló que las tarjetas de categoría de Home seguían viéndose "simplonas": iconos genéricos de Material Icons sin relación con el juego, y grid uniforme poco editorial. Compartió como referencia visual la wiki Fandom de Terraria (no se pudo cargar directamente, `WebFetch` devolvió 402), así que el criterio se resolvió por preguntas directas de alcance.
+
+Decisiones confirmadas: (1) set de iconos vectoriales pixel/fantasy propio, no Material Icons ni imágenes reales de items; (2) grid 2 columnas con tarjetas tipo banner (icono grande + nombre superpuesto con gradiente), no grid simétrico icono+label.
+
+| Cambio | Archivo(s) | Descripción |
+|---|---|---|
+| feat | `PixelCategoryIcons.kt` (nuevo) | `PixelIcon` composable (`Canvas`/`drawRect` por celda) + 10 patrones 12×12, uno por `ItemCategory` |
+| refactor | `HomeScreen.kt` | `CategoryCard` reescrita a layout banner (`Box` + `PixelIcon` + gradiente + label), altura 120dp→160dp; eliminada `iconForCategory()` y los 9 imports de Material Icons que solo esa función usaba |
+
+### Documentación nueva
+- [[03-Patrones-Kotlin/Pixel-Icon-Rendering]] — nueva nota de patrón para el mecanismo de render pixel-art vía `Canvas`.
+- [[05-UI-Design-System]] — sección "Iconografía" y componentes actualizados.
+
+### Hand-off
+- Build/tests: sin cambios de lógica de negocio, 51/51 se mantiene.
+- **Pendiente:** validación visual en dispositivo — este entorno sigue sin `adb`. Los 10 patrones pixel son texto plano fácil de ajustar si alguna silueta no se lee bien a 160dp, o si el contraste del texto blanco falla sobre algún acento claro (`Crystal`, `Desert`).
+
+## Iteración 12 — Rediseño visual/UX (Underworld dark mode, Silkscreen, RarityTier, shapes/spacing) (2026-07-26)
+
+El usuario pidió un rediseño completo de la interfaz con criterio UX profesional: amigable/accesible pero fiel a la identidad visual de Terraria. Tras un brainstorming con preguntas de alcance (navegación fuera de este trabajo, dark mode Underworld sí se implementa, código muerto se elimina, fuente pixel solo en headers y empaquetada offline, paleta se amplía con acentos de bioma aplicados ya a categorías, shapes en look "slot de inventario"), Claude Code (Sonnet 5, plan + build en la misma sesión) ejecutó el rediseño.
+
+| Cambio | Archivo(s) | Descripción |
+|---|---|---|
+| chore | `ItemsScreen.kt`, `navigation/ItemsNavigation.kt` | Eliminado código muerto (no referenciado desde `MainActivity` desde la reorganización Home de iteración 4) |
+| feat | `Color.kt` | 4 acentos de bioma (`Corruption`/`Crystal`/`Desert`/`Abyss`) + paleta Underworld dark (`ObsidianBlack`/`AshSurface`/`LavaOrange`/`EmberRed`/`MagmaCrust`/`CinderWhite`) |
+| feat | `Theme.kt` | `TerrariaDarkColors` reconstruido con paleta Underworld real (antes reusaba tonos del claro); `shapes = TerrariaShapes` wireado |
+| feat | `Shapes.kt` (nuevo) | Esquinas 8-12dp + `InventorySlotBorderWidth`/`Color` para el borde "slot de inventario" |
+| feat | `Spacing.kt` (nuevo) | Escala `xs..xxl` (4-24dp) nombrando los valores ad hoc ya en uso |
+| feat | `Type.kt` | Fuente pixel Silkscreen (`res/font/silkscreen_{regular,bold}.ttf`, empaquetada offline) en headers; `titleSmall`/`bodySmall` añadidos (faltaban, caían a default M3) |
+| refactor | `RarityTier.kt` (nuevo, domain) | Enum único de rareza (color+label+level), reemplaza `Color.kt::rarityColor()` + overrides locales de `RarityChip.kt` |
+| feat | `InventorySlotCard.kt` (nuevo) | Card compartida con shape+borde, reemplaza 4 implementaciones privadas duplicadas (`HomeScreen`, `ItemDetailScreen` x2, `SearchScreen`) |
+| feat | `ItemCategory.kt` | Recolor de 4 categorías a los nuevos acentos de bioma (Vanity→Corruption, Accesorios→Crystal, Bloques→Desert, Mecanismos→Abyss) |
+| test | `RarityTierTest.kt` (nuevo) | 4 casos: `fromLevel(-1)`, `fromLevel(0)`, `fromLevel(11)`, fallback a `COMMON` para nivel no mapeado |
+
+### Bugs corregidos
+- Duplicación/inconsistencia de color y label de rareza entre `Color.kt` y `RarityChip.kt`.
+- Nombre engañoso `RoundedFont` (era solo `FontFamily.SansSerif`, no una fuente redondeada real).
+- `titleSmall`/`bodySmall` ausentes en `TerrariaTypography`, caían silenciosamente a defaults de Material3.
+- Dark mode "Underworld" era solo una inversión fondo/texto del modo claro, no una paleta propia.
+
+### Features nuevas
+- Dark mode "Underworld" con paleta lava/ceniza/obsidiana real.
+- Fuente pixel Silkscreen en títulos/headers, empaquetada offline (sin dependencia de red/Play Services).
+- Look "slot de inventario" (borde sólido + esquinas moderadas) vía componente compartido `InventorySlotCard`.
+- 4 acentos de bioma nuevos, aplicados ya a colores de categoría en Home.
+
+### Documentación nueva
+- [[03-Patrones-Kotlin/Rarity-Tier-Consolidation]] — nueva nota de patrón para el enum `RarityTier`.
+- [[03-Patrones-Kotlin/Material-Theme-Tokens]] actualizado — paleta ampliada, Shapes/Spacing, riesgo "Underworld pospuesto" cerrado como resuelto.
+- [[05-UI-Design-System]] reescrito — paleta completa, tipografía, nueva sección "Forma y espaciado", Material3 mapping actualizado, rareza apunta a la nota nueva.
+
+### Hand-off
+- Tests: **51/51** passing (suite previa + 4 `RarityTierTest` nuevos).
+- Build: `./gradlew :app:assembleDebug` y `:app:testDebugUnitTest` en verde.
+- **Pendiente:** validación visual en dispositivo físico — este entorno no tiene `adb` disponible, no se pudo instalar el APK ni recorrer las pantallas a ojo. Recomendado antes de dar el rediseño por cerrado.
+- Pendiente (fuera de alcance, anotado): barrido completo de `.dp` literales al nuevo `Spacing` en archivos no tocados por este trabajo.
+- Decisión de siguiente feature sigue abierta: NPCs, Room cache, o migración KMP (dark mode ya no está en esta lista, se resolvió aquí).
+
 ## Iteración 5 — Icono Tree of Life real + apostrofe fix + Recetas (2026-07-25)
 
 Tras la tercera validación en móvil, el usuario reportó 3 cosas: el icono de la app se notaba "generado por AI", muchas imágenes de items no salían (especialmente las que tienen apostrofes como Abigail's Flower), y se necesitaba mostrar los crafteos en la ficha de detalle.
@@ -122,7 +242,7 @@ Pendiente para próxima sesión GLM-5.2:
 - [[06-Setup-Entorno]] — Android Studio, JDK, SDK, adb, conexión del móvil
 - [[07-GitHub-y-Publicacion]] — repo público, gh CLI, LICENSE, README
 
-### Patrones Kotlin (24 notas, todos implementados en código)
+### Patrones Kotlin (26 notas, todos implementados en código)
 - [[03-Patrones-Kotlin/Feature-based-structure]]
 - [[03-Patrones-Kotlin/Clean-Architecture]]
 - [[03-Patrones-Kotlin/Material-Theme-Tokens]]
@@ -146,6 +266,8 @@ Pendiente para próxima sesión GLM-5.2:
 - [[03-Patrones-Kotlin/Recipes-API-Pattern]]
 - [[03-Patrones-Kotlin/Search-Global-Pattern]]
 - [[03-Patrones-Kotlin/Debug-Lecciones-User-Agent]]
+- [[03-Patrones-Kotlin/Rarity-Tier-Consolidation]]
+- [[03-Patrones-Kotlin/Pixel-Icon-Rendering]]
 
 ### API de Terraria (MediaWiki + Cargo)
 - [[04-API-Terraria/Endpoint-Lista]]
@@ -181,21 +303,21 @@ terrariawiki/
         │   │   ├── core/
         │   │   │   ├── network/HttpClientFactory.kt
         │   │   │   ├── di/NetworkModule.kt
-        │   │   │   ├── ui/theme/{Color,Theme,Type}.kt
+        │   │   │   ├── ui/theme/{Color,Theme,Type,Shapes,Spacing}.kt
         │   │   │   └── util/
         │   │   └── features/items/
         │   │       ├── data/  ({ItemsApi,ItemsApiImpl,ItemsDto,ItemsMapper,ItemsRepository}.kt)
-        │   │       ├── domain/({Item,GetItemsUseCase,SearchItemsUseCase,GetItemByNameUseCase}.kt)
+        │   │       ├── domain/({Item,ItemCategory,RarityTier,GetItemsUseCase,SearchItemsUseCase,GetItemByNameUseCase}.kt)
         │   │       ├── di/ItemsModule.kt
         │   │       └── ui/
-        │   │           ├── ItemsScreen.kt
-        │   │           ├── ItemsViewModel.kt
+        │   │           ├── HomeScreen.kt
+        │   │           ├── ItemsByCategoryScreen.kt
         │   │           ├── ItemDetailScreen.kt
         │   │           ├── ItemDetailViewModel.kt
-        │   │           ├── components/ ({RarityChip,ItemCard,StateScreens}.kt)
-        │   │           └── navigation/ItemsNavigation.kt
-        │   └── res/  (themes, colors, strings, drawable, mipmap)
-        └── test/  (15 unit tests, JUnit4 + MockK + Turbine)
+        │   │           ├── SearchScreen.kt
+        │   │           └── components/ ({RarityChip,ItemCard,InventorySlotCard,StateScreens}.kt)
+        │   └── res/  (themes, colors, strings, drawable, mipmap, font/silkscreen_*.ttf)
+        └── test/  (51 unit tests, JUnit4 + MockK + Turbine)
 ```
 
 ## Glosario
