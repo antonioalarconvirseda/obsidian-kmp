@@ -18,6 +18,7 @@
 
 Cada iteración vive en su propia nota dentro de `Iteraciones/`, con el detalle completo de cambios, bugs corregidos y hand-off. Esta lista es solo el índice, ordenado del más reciente al más antiguo.
 
+- **Iteración 22** (2026-07-27) — Auditoría arquitectura ViewModel/UseCase + sync README/CLAUDE.md → [[Iteraciones/Iteracion-22]]
 - **Iteración 21** (2026-07-27) — Auditoría UX honesta + consolidación de componentes UI en `core/ui/components/` → [[Iteraciones/Iteracion-21]]
 - **Iteración 20** (2026-07-27) — Fix icono categoría Jefes + rediseño fallback genérico → [[Iteraciones/Iteracion-20]]
 - **Iteración 19** (2026-07-26) — Configuración de graphify (grafo de dependencias del código) → [[Iteraciones/Iteracion-19]]
