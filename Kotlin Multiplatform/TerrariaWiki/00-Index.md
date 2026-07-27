@@ -18,6 +18,7 @@
 
 Cada iteración vive en su propia nota dentro de `Iteraciones/`, con el detalle completo de cambios, bugs corregidos y hand-off. Esta lista es solo el índice, ordenado del más reciente al más antiguo.
 
+- **Iteración 20** (2026-07-27) — Fix icono categoría Jefes + rediseño fallback genérico → [[Iteraciones/Iteracion-20]]
 - **Iteración 19** (2026-07-26) — Configuración de graphify (grafo de dependencias del código) → [[Iteraciones/Iteracion-19]]
 - **Iteración 18** (2026-07-26) — Audit arquitectura + fix Dependency Inversion en Repository → [[Iteraciones/Iteracion-18]]
 - **Iteración 17** (2026-07-26) — Features Bosses + Events, primera ampliación más allá de Items → [[Iteraciones/Iteracion-17]]
