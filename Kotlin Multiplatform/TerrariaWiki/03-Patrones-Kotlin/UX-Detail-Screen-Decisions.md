@@ -28,6 +28,8 @@ Rediseñar `ItemDetailScreen` con:
 6. **Hardmode badge:** pill naranja "Modo difícil" cuando `hardmode == "1"`. Solo aparece en items del modo difícil.
 7. **CategoryChip vs ItemTypeChips:** los tipos (`type`) son funcionales (block, weapon, etc.) → chips verdes; las categorías de gameplay (`listcat`) son descriptivas (broadswords, craftable items) → chips en fondo secundario con borde.
 
+> **Actualización (Iteración 21):** `DetailSection`/`StatRow` se movieron a `core/ui/components/DetailSection.kt` (compartidos con `BossDetailScreen`, ver [[03-Patrones-Kotlin/Shared-UI-Components-Core]]) y perdieron el borde de `InventorySlotCard` que tenían originalmente — cada sección es ahora un `Column` simple con título + `HorizontalDivider`, sin card propia. Un item con muchos campos poblados (receta+stats+categorías+economía+info) se veía como 5-6 cajas idénticas apiladas, más "pantalla de ajustes" que artículo de wiki; el único elemento con borde que queda en la pantalla es `DetailHeader`. El snippet de abajo refleja la versión **original** (con card por sección) — ver el código actual en `ItemDetailScreen.kt`/`core/ui/components/DetailSection.kt` para la versión vigente.
+
 ## Implementación Kotlin
 
 ```kotlin

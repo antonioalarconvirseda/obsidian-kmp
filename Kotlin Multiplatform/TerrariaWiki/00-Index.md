@@ -18,6 +18,7 @@
 
 Cada iteración vive en su propia nota dentro de `Iteraciones/`, con el detalle completo de cambios, bugs corregidos y hand-off. Esta lista es solo el índice, ordenado del más reciente al más antiguo.
 
+- **Iteración 21** (2026-07-27) — Auditoría UX honesta + consolidación de componentes UI en `core/ui/components/` → [[Iteraciones/Iteracion-21]]
 - **Iteración 20** (2026-07-27) — Fix icono categoría Jefes + rediseño fallback genérico → [[Iteraciones/Iteracion-20]]
 - **Iteración 19** (2026-07-26) — Configuración de graphify (grafo de dependencias del código) → [[Iteraciones/Iteracion-19]]
 - **Iteración 18** (2026-07-26) — Audit arquitectura + fix Dependency Inversion en Repository → [[Iteraciones/Iteracion-18]]
@@ -79,6 +80,7 @@ Cada iteración vive en su propia nota dentro de `Iteraciones/`, con el detalle 
 - [[03-Patrones-Kotlin/Rarity-Tier-Consolidation]]
 - [[03-Patrones-Kotlin/Pixel-Icon-Rendering]]
 - [[03-Patrones-Kotlin/Static-Domain-Catalog]]
+- [[03-Patrones-Kotlin/Shared-UI-Components-Core]]
 
 ### API de Terraria (MediaWiki + Cargo)
 - [[04-API-Terraria/Endpoint-Lista]]
@@ -115,6 +117,7 @@ terrariawiki/
         │   │   │   ├── network/HttpClientFactory.kt
         │   │   │   ├── di/NetworkModule.kt
         │   │   │   ├── ui/theme/{Color,Theme,Type,Shapes,Spacing}.kt
+        │   │   │   ├── ui/components/ ({InventorySlotCard,StateScreens,WikiThumbnail,DetailSection}.kt — iteración 21, compartidos entre features)
         │   │   │   └── util/
         │   │   └── features/items/
         │   │       ├── data/  ({ItemsApi,ItemsApiImpl,ItemsDto,ItemsMapper,ItemsRepository}.kt)
@@ -126,7 +129,7 @@ terrariawiki/
         │   │           ├── ItemDetailScreen.kt
         │   │           ├── ItemDetailViewModel.kt
         │   │           ├── SearchScreen.kt
-        │   │           └── components/ ({RarityChip,ItemCard,InventorySlotCard,StateScreens}.kt)
+        │   │           └── components/ ({RarityChip,ItemCard}.kt — solo lo que sigue siendo específico de Items)
         │   │   ├── features/bosses/          (iteración 17 — mirror de items/, tabla Cargo NPCs)
         │   │       ├── data/  ({BossesApi,BossesApiImpl,BossesDto,BossesMapper,BossesRepository}.kt)
         │   │       ├── domain/({Boss,GetBossesUseCase,GetBossByNameUseCase}.kt)
@@ -134,7 +137,7 @@ terrariawiki/
         │   │       └── ui/
         │   │           ├── BossListScreen.kt, BossListViewModel.kt
         │   │           ├── BossDetailScreen.kt, BossDetailViewModel.kt
-        │   │           └── components/ (duplicados de items/ui/components — features no se importan entre sí)
+        │   │           └── components/ (BossCard.kt — solo lo específico de Bosses, ver [[03-Patrones-Kotlin/Shared-UI-Components-Core]])
         │   │   └── features/events/          (iteración 17 — sin data/di, catálogo estático)
         │   │       ├── domain/({Event,EventCatalog}.kt)
         │   │       └── ui/EventListScreen.kt
